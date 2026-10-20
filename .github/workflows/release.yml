@@ -31,7 +31,7 @@ jobs:
       - name: Build Windows Daemon Binary
         working-directory: daemon
         run: |
-          go build -v -ldflags="-s -w" -o ../wows-presence-daemon.exe ./cmd/daemon
+          go build -v -ldflags="-s -w -H=windowsgui -X main.version=${{ github.event.inputs.tag_name || github.ref_name }} -X main.defaultDiscordID=${{ secrets.DISCORD_CLIENT_ID || '1562101043670556782' }}" -o ../wows-presence-daemon.exe ./cmd/daemon
 
       - name: Create Release Archive
         shell: powershell
@@ -47,7 +47,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
-          files: ./wows-discord-rpc-windows-x64.zip
+          files: |
+            ./wows-presence-daemon.exe
+            ./wows-discord-rpc-windows-x64.zip
           draft: false
           prerelease: false
           generate_release_notes: true
