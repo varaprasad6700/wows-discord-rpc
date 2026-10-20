@@ -198,3 +198,11 @@ func (c *Client) Close() error {
 	}
 	return nil
 }
+
+
+// IsConnected reports whether an active connection to Discord IPC exists.
+func (c *Client) IsConnected() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.conn != nil
+}

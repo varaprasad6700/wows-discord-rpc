@@ -62,3 +62,33 @@ discord:
 		t.Errorf("expected default interval 15, got %d", cfg.Discord.UpdateIntervalSeconds)
 	}
 }
+
+
+func TestSaveAndLoadConfig(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "wows_cfg_test_*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	cfgPath := filepath.Join(tmpDir, "config.yaml")
+	cfg := config.DefaultConfig()
+	cfg.WoWS.InstallPath = `E:\TestPath\WoWS`
+	cfg.Backend.URL = "https://custom-meta.example.com"
+
+	if err := config.Save(cfg, cfgPath); err != nil {
+		t.Fatalf("config.Save failed: %v", err)
+	}
+
+	loaded, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("config.Load failed: %v", err)
+	}
+
+	if loaded.WoWS.InstallPath != `E:\TestPath\WoWS` {
+		t.Errorf("expected WoWS path 'E:\\TestPath\\WoWS', got '%s'", loaded.WoWS.InstallPath)
+	}
+	if loaded.Backend.URL != "https://custom-meta.example.com" {
+		t.Errorf("expected custom backend URL, got '%s'", loaded.Backend.URL)
+	}
+}

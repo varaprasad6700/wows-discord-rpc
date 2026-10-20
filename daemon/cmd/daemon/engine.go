@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/wows-discord-rpc/daemon/internal/api"
+	"github.com/wows-discord-rpc/daemon/internal/detector"
 	"github.com/wows-discord-rpc/daemon/internal/discord"
 	"github.com/wows-discord-rpc/daemon/internal/watcher"
 )
@@ -28,6 +29,8 @@ type Engine struct {
 	shipResolver   ShipResolver
 	discordClient  DiscordActivityClient
 	wasGameRunning bool
+	lastDetails    string
+	lastState      string
 }
 
 func NewEngine(wowsPath string, isGameRunning func() bool, shipResolver ShipResolver, discordClient DiscordActivityClient) *Engine {
@@ -36,6 +39,8 @@ func NewEngine(wowsPath string, isGameRunning func() bool, shipResolver ShipReso
 		isGameRunning: isGameRunning,
 		shipResolver:  shipResolver,
 		discordClient: discordClient,
+		lastDetails:   "In Port",
+		lastState:     "Inspecting Fleet & Armory",
 	}
 }
 
@@ -43,12 +48,23 @@ func (e *Engine) SetWoWSPath(p string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.wowsPath = p
+
+	// Attempt to redeploy embedded mod to new path
+	if buildPath, err := detector.FindLatestBuild(p); err == nil {
+		_ = detector.DeployEmbeddedMod(buildPath)
+	}
 }
 
 func (e *Engine) GetWoWSPath() string {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.wowsPath
+}
+
+func (e *Engine) GetStatus() (gameRunning bool, details, state string) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.isGameRunning(), e.lastDetails, e.lastState
 }
 
 // FindLiveStateFile searches for wows_live_state.json across game root, bin/<build>, and bin/<build>/bin64
@@ -87,27 +103,34 @@ func FindLiveStateFile(wowsPath string) string {
 }
 
 func (e *Engine) TickOnce() error {
-	e.mu.RLock()
+	e.mu.Lock()
 	currentPath := e.wowsPath
-	e.mu.RUnlock()
-
 	running := e.isGameRunning()
+
 	if !running {
 		if e.wasGameRunning {
 			log.Println("World of Warships closed. Clearing Discord activity.")
 			_ = e.discordClient.ClearActivity()
 			e.wasGameRunning = false
+			e.lastDetails = "Closed"
+			e.lastState = "Game not running"
 		}
+		e.mu.Unlock()
 		return nil
 	}
 
 	e.wasGameRunning = true
+	e.mu.Unlock()
 
 	// Check if tempArenaInfo.json exists in replays
 	arenaPath := filepath.Join(currentPath, "replays", "tempArenaInfo.json")
 	if _, err := os.Stat(arenaPath); os.IsNotExist(err) {
 		// In Port
 		act := discord.FormatOptionC(nil, nil, nil)
+		e.mu.Lock()
+		e.lastDetails = act.Details
+		e.lastState = act.State
+		e.mu.Unlock()
 		return e.discordClient.SetActivity(act)
 	}
 
@@ -116,6 +139,10 @@ func (e *Engine) TickOnce() error {
 	if err != nil {
 		log.Printf("Warning: failed to parse arena info: %v. Falling back to port.", err)
 		act := discord.FormatOptionC(nil, nil, nil)
+		e.mu.Lock()
+		e.lastDetails = act.Details
+		e.lastState = act.State
+		e.mu.Unlock()
 		return e.discordClient.SetActivity(act)
 	}
 
@@ -147,5 +174,10 @@ func (e *Engine) TickOnce() error {
 	shipMeta, _ := e.shipResolver.GetShip(shipID)
 
 	act := discord.FormatOptionC(arena, live, shipMeta)
+	e.mu.Lock()
+	e.lastDetails = act.Details
+	e.lastState = act.State
+	e.mu.Unlock()
+
 	return e.discordClient.SetActivity(act)
 }

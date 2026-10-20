@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -43,6 +44,16 @@ func DefaultConfig() *Config {
 	}
 }
 
+// DefaultConfigPath returns %APPDATA%\wows-rpc\config.yaml on Windows
+func DefaultConfigPath() string {
+	appData := os.Getenv("APPDATA")
+	if appData == "" {
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, ".wows-rpc", "config.yaml")
+	}
+	return filepath.Join(appData, "wows-rpc", "config.yaml")
+}
+
 func Load(path string) (*Config, error) {
 	cfg := DefaultConfig()
 
@@ -67,4 +78,28 @@ func Load(path string) (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func Save(cfg *Config, path string) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("creating directory %s: %w", dir, err)
+	}
+
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("marshaling config yaml: %w", err)
+	}
+
+	tmpPath := path + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+		return fmt.Errorf("writing temp config file %s: %w", tmpPath, err)
+	}
+
+	_ = os.Remove(path)
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("replacing config file %s: %w", path, err)
+	}
+
+	return nil
 }
