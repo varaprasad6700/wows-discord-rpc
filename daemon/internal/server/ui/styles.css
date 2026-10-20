@@ -1,0 +1,291 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  user-select: none;
+}
+
+body {
+  background-color: #0b121b;
+  color: #d1dce8;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.window-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  background: #0f1925;
+  border-bottom: 1px solid #1a2a3e;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand .icon {
+  font-size: 20px;
+}
+
+.brand h2 {
+  font-size: 15px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.badge.active {
+  background: #1b5e20;
+  color: #a5d6a7;
+  border: 1px solid #2e7d32;
+}
+
+.badge.idle {
+  background: #2a3a4c;
+  color: #90a4ae;
+}
+
+.tabs {
+  display: flex;
+  background: #0d1520;
+  border-bottom: 1px solid #1c2b3d;
+  padding: 0 10px;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  color: #8397ad;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  color: #fff;
+}
+
+.tab-btn.active {
+  color: #4a90e2;
+  border-bottom-color: #4a90e2;
+  font-weight: 600;
+}
+
+.tab-content {
+  flex: 1;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+.card {
+  background: #121c29;
+  border: 1px solid #1d2c3e;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.status-item .label, .presence-card .label {
+  font-size: 11px;
+  color: #6a829e;
+  font-weight: 600;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.status-item .val {
+  font-size: 13px;
+  color: #e2ecf7;
+  font-weight: 600;
+}
+
+.presence-card {
+  background: #0e1722;
+  border: 1px solid #1f3044;
+}
+
+.presence-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 4px;
+}
+
+.presence-sub {
+  font-size: 13px;
+  color: #4fc3f7;
+  margin-top: 6px;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field label {
+  display: block;
+  font-size: 12px;
+  color: #9cb1c9;
+  margin-bottom: 6px;
+}
+
+.field input[type="text"] {
+  width: 100%;
+  background: #090e15;
+  border: 1px solid #233448;
+  border-radius: 4px;
+  padding: 7px 10px;
+  color: #fff;
+  font-size: 12px;
+  outline: none;
+}
+
+.field input[type="text"]:focus {
+  border-color: #4a90e2;
+}
+
+.input-with-button {
+  display: flex;
+  gap: 8px;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox-field input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.checkbox-field label {
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.btn {
+  border: none;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn.primary {
+  background: #1976d2;
+  color: #fff;
+}
+
+.btn.primary:hover {
+  background: #2196f3;
+}
+
+.btn.secondary {
+  background: #1d2c3e;
+  border: 1px solid #2a3d54;
+  color: #d1dce8;
+}
+
+.btn.secondary:hover {
+  background: #2a3d54;
+  color: #fff;
+}
+
+.btn.success {
+  background: #2e7d32;
+  color: #fff;
+}
+
+.btn.success:hover {
+  background: #388e3c;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.notice {
+  font-size: 12px;
+  color: #81c784;
+}
+
+.log-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.log-console {
+  background: #070b10;
+  border: 1px solid #162230;
+  border-radius: 4px;
+  padding: 10px;
+  height: 220px;
+  overflow-y: auto;
+}
+
+.log-console pre {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  color: #8da3bc;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.version-banner {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.release-notes {
+  background: #090f17;
+  border: 1px solid #1c2b3d;
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  min-height: 100px;
+  max-height: 160px;
+  overflow-y: auto;
+  margin-bottom: 14px;
+  color: #9cb1c9;
+  user-select: text;
+}

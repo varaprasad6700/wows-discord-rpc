@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>World of Warships Presence Controller</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="window-header">
+    <div class="brand">
+      <span class="icon">⚓</span>
+      <h2>WoWS Presence Controller</h2>
+    </div>
+    <div id="statusBadge" class="badge idle">Detecting...</div>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="statusTab">Status</button>
+    <button class="tab-btn" data-tab="settingsTab">Settings</button>
+    <button class="tab-btn" data-tab="logsTab">Logs & Diagnostics</button>
+    <button class="tab-btn" data-tab="updatesTab">Updates</button>
+  </nav>
+
+  <main class="tab-content">
+    <!-- Status Tab -->
+    <section id="statusTab" class="tab-pane active">
+      <div class="card status-grid">
+        <div class="status-item">
+          <div class="label">GAME CLIENT</div>
+          <div id="gameStatusText" class="val">Checking...</div>
+        </div>
+        <div class="status-item">
+          <div class="label">DISCORD IPC</div>
+          <div id="discordStatusText" class="val">Checking...</div>
+        </div>
+      </div>
+
+      <div class="card presence-card">
+        <div class="label">ACTIVE DISCORD PRESENCE</div>
+        <div id="presenceDetails" class="presence-title">In Port</div>
+        <div id="presenceState" class="presence-sub">Inspecting Fleet & Armory</div>
+      </div>
+    </section>
+
+    <!-- Settings Tab -->
+    <section id="settingsTab" class="tab-pane">
+      <div class="card">
+        <div class="field">
+          <label>World of Warships Installation Directory</label>
+          <div class="input-with-button">
+            <input type="text" id="installPathInput" placeholder="E:\WarGaming Games\World_of_Warships">
+            <button id="browseFolderBtn" class="btn secondary">Browse</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Metadata Cache Server URL</label>
+          <input type="text" id="backendUrlInput" placeholder="https://wows-meta.varaprasad.co.in">
+        </div>
+
+        <div class="field checkbox-field">
+          <input type="checkbox" id="autoStartCheckbox">
+          <label for="autoStartCheckbox">Launch automatically on Windows startup</label>
+        </div>
+
+        <div class="actions">
+          <button id="saveConfigBtn" class="btn primary">Save & Apply</button>
+          <span id="saveNotice" class="notice"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Logs Tab -->
+    <section id="logsTab" class="tab-pane">
+      <div class="card">
+        <div class="field checkbox-field">
+          <input type="checkbox" id="fileLoggingCheckbox">
+          <label for="fileLoggingCheckbox">Enable File Logging (<code>%APPDATA%\wows-rpc\daemon.log</code>)</label>
+        </div>
+
+        <div class="log-actions">
+          <button id="openLogFileBtn" class="btn secondary">Open Log File</button>
+          <button id="openLogFolderBtn" class="btn secondary">Open Folder</button>
+          <button id="refreshLogsBtn" class="btn secondary">Refresh</button>
+        </div>
+
+        <div class="log-console">
+          <pre id="logConsoleOutput">Loading logs...</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Updates Tab -->
+    <section id="updatesTab" class="tab-pane">
+      <div class="card">
+        <div class="version-banner">
+          <div>Current Version: <strong id="currentVersionText">v1.1.0</strong></div>
+          <div>Latest Release: <strong id="latestVersionText">Checking...</strong></div>
+        </div>
+
+        <div id="releaseNotesBox" class="release-notes">
+          No update check performed yet.
+        </div>
+
+        <div class="actions">
+          <button id="checkUpdateBtn" class="btn primary">Check for Updates</button>
+          <button id="applyUpdateBtn" class="btn success" style="display: none;">Install Update Now</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
