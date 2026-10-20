@@ -26,12 +26,15 @@ type DiscordConfig struct {
 	UpdateIntervalSeconds int    `yaml:"update_interval_seconds"`
 }
 
+const DefaultDiscordClientID = "1562101043670556782"
+
 func DefaultConfig() *Config {
 	return &Config{
 		Backend: BackendConfig{
 			URL: "http://localhost:8080",
 		},
 		Discord: DiscordConfig{
+			ClientID:              DefaultDiscordClientID,
 			UpdateIntervalSeconds: 15,
 		},
 	}
@@ -52,6 +55,9 @@ func Load(path string) (*Config, error) {
 	// Apply fallbacks if empty
 	if cfg.Backend.URL == "" {
 		cfg.Backend.URL = "http://localhost:8080"
+	}
+	if cfg.Discord.ClientID == "" {
+		cfg.Discord.ClientID = DefaultDiscordClientID
 	}
 	if cfg.Discord.UpdateIntervalSeconds <= 0 {
 		cfg.Discord.UpdateIntervalSeconds = 15

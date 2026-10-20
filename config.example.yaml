@@ -5,5 +5,5 @@ backend:
   url: "http://localhost:8080"
 
 discord:
-  client_id: "123456789012345678"
+  client_id: "1562101043670556782" # World of Warships Discord Application ID
   update_interval_seconds: 15

@@ -34,7 +34,7 @@ func main() {
 			cfg = &config.Config{
 				Backend: config.BackendConfig{URL: "http://localhost:8080"},
 				Discord: config.DiscordConfig{
-					ClientID:              "123456789012345678",
+					ClientID:              config.DefaultDiscordClientID,
 					UpdateIntervalSeconds: 15,
 				},
 			}

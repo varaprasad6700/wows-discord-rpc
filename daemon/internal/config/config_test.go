@@ -20,8 +20,8 @@ func TestLoadConfig_ExampleFile(t *testing.T) {
 		t.Errorf("expected backend URL 'http://localhost:8080', got '%s'", cfg.Backend.URL)
 	}
 
-	if cfg.Discord.ClientID != "123456789012345678" {
-		t.Errorf("expected discord client ID '123456789012345678', got '%s'", cfg.Discord.ClientID)
+	if cfg.Discord.ClientID != "1562101043670556782" {
+		t.Errorf("expected discord client ID '1562101043670556782', got '%s'", cfg.Discord.ClientID)
 	}
 
 	if cfg.Discord.UpdateIntervalSeconds != 15 {
@@ -52,6 +52,10 @@ discord:
 
 	if cfg.Backend.URL != "http://localhost:8080" {
 		t.Errorf("expected default backend URL 'http://localhost:8080', got '%s'", cfg.Backend.URL)
+	}
+
+	if cfg.Discord.ClientID != "999" {
+		t.Errorf("expected custom client ID '999', got '%s'", cfg.Discord.ClientID)
 	}
 
 	if cfg.Discord.UpdateIntervalSeconds != 15 {
