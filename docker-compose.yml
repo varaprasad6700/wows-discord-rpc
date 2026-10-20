@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16
     container_name: wows-meta-postgres
     restart: unless-stopped
     environment:
@@ -18,10 +18,10 @@ services:
       retries: 5
 
   wows-meta-service:
-    image: ghcr.io/varaprasad6700/wows-meta-service:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: ghcr.io/varaprasad6700/wows-meta-service:latest
     container_name: wows-meta-service
     restart: unless-stopped
     depends_on:
