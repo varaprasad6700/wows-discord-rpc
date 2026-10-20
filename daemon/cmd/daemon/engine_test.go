@@ -155,3 +155,44 @@ func TestEngine_TickOnce_InBattle(t *testing.T) {
 		t.Errorf("expected transition back to 'In Port', got '%s'", mockDiscord.lastActivity.Details)
 	}
 }
+
+
+func TestFindLiveStateFile(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "wows_engine_test_*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// 1. None exists
+	found := FindLiveStateFile(tempDir)
+	if found != "" {
+		t.Errorf("expected empty string when no live state exists, got %s", found)
+	}
+
+	// 2. Exists in bin/<build>/bin64
+	bin64Dir := filepath.Join(tempDir, "bin", "999999", "bin64")
+	if err := os.MkdirAll(bin64Dir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	bin64State := filepath.Join(bin64Dir, "wows_live_state.json")
+	if err := os.WriteFile(bin64State, []byte("{}"), 0644); err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+
+	found = FindLiveStateFile(tempDir)
+	if found != bin64State {
+		t.Errorf("expected %s, got %s", bin64State, found)
+	}
+
+	// 3. Exists in root - root should take priority
+	rootState := filepath.Join(tempDir, "wows_live_state.json")
+	if err := os.WriteFile(rootState, []byte("{}"), 0644); err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+
+	found = FindLiveStateFile(tempDir)
+	if found != rootState {
+		t.Errorf("expected priority to root %s, got %s", rootState, found)
+	}
+}

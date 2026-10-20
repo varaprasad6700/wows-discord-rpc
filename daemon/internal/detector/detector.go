@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+
+	"github.com/wows-discord-rpc/daemon/internal/modembed"
 )
 
 // FindLatestBuild locates the highest numbered build directory inside <wowsPath>/bin
@@ -42,7 +44,7 @@ func FindLatestBuild(wowsPath string) (string, error) {
 }
 
 // EnsureModDeployed ensures that PnFModsLoader.py and TelemetryExporter/Main.py
-// are deployed into <buildPath>/res_mods/
+// are deployed into <buildPath>/res_mods/ from an on-disk mod source directory.
 func EnsureModDeployed(buildPath, modSourceDir string) error {
 	resModsDir := filepath.Join(buildPath, "res_mods")
 	telemetryDir := filepath.Join(resModsDir, "PnFMods", "TelemetryExporter")
@@ -68,15 +70,42 @@ func EnsureModDeployed(buildPath, modSourceDir string) error {
 	return nil
 }
 
-func copyIfDifferent(src, dst string) error {
-	srcData, err := os.ReadFile(src)
-	if err != nil {
-		return fmt.Errorf("reading source file %s: %w", src, err)
+// DeployEmbeddedMod extracts the embedded mod assets directly into <buildPath>/res_mods/
+func DeployEmbeddedMod(buildPath string) error {
+	resModsDir := filepath.Join(buildPath, "res_mods")
+	telemetryDir := filepath.Join(resModsDir, "PnFMods", "TelemetryExporter")
+
+	if err := os.MkdirAll(telemetryDir, 0755); err != nil {
+		return fmt.Errorf("creating mod directories in %s: %w", resModsDir, err)
 	}
 
+	// 1. Deploy PnFModsLoader.py
+	loaderData, err := modembed.ReadModFile("PnFModsLoader.py")
+	if err != nil {
+		return fmt.Errorf("reading embedded PnFModsLoader.py: %w", err)
+	}
+	loaderDst := filepath.Join(resModsDir, "PnFModsLoader.py")
+	if err := writeIfDifferent(loaderData, loaderDst); err != nil {
+		return fmt.Errorf("deploying embedded PnFModsLoader.py: %w", err)
+	}
+
+	// 2. Deploy TelemetryExporter/Main.py
+	mainData, err := modembed.ReadModFile("PnFMods/TelemetryExporter/Main.py")
+	if err != nil {
+		return fmt.Errorf("reading embedded Main.py: %w", err)
+	}
+	mainDst := filepath.Join(telemetryDir, "Main.py")
+	if err := writeIfDifferent(mainData, mainDst); err != nil {
+		return fmt.Errorf("deploying embedded TelemetryExporter Main.py: %w", err)
+	}
+
+	return nil
+}
+
+func writeIfDifferent(srcData []byte, dst string) error {
 	if dstData, err := os.ReadFile(dst); err == nil {
 		if bytes.Equal(srcData, dstData) {
-			return nil // Identical content, no copy needed
+			return nil
 		}
 	}
 
@@ -85,15 +114,20 @@ func copyIfDifferent(src, dst string) error {
 		return fmt.Errorf("writing temp destination %s: %w", tmpDst, err)
 	}
 
+	_ = os.Remove(dst)
 	if err := os.Rename(tmpDst, dst); err != nil {
-		// On windows rename might fail if dst exists, remove first
-		_ = os.Remove(dst)
-		if err := os.Rename(tmpDst, dst); err != nil {
-			return fmt.Errorf("renaming temp to destination %s: %w", dst, err)
-		}
+		return fmt.Errorf("renaming temp to destination %s: %w", dst, err)
 	}
 
 	return nil
+}
+
+func copyIfDifferent(src, dst string) error {
+	srcData, err := os.ReadFile(src)
+	if err != nil {
+		return fmt.Errorf("reading source file %s: %w", src, err)
+	}
+	return writeIfDifferent(srcData, dst)
 }
 
 // FindWoWSPath attempts to auto-discover World of Warships installation
@@ -142,17 +176,28 @@ func FindWoWSPath() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("World of Warships directory not found in standard paths; please specify wows.install_path in config.yaml")
+	return "", fmt.Errorf("world of warships installation directory not found in common locations")
 }
 
-// IsValidWoWSPath checks whether a folder looks like a WoWS installation
+// IsValidWoWSPath checks whether the given path contains WoWS binaries or structures
 func IsValidWoWSPath(path string) bool {
 	if path == "" {
 		return false
 	}
+	if stat, err := os.Stat(path); err != nil || !stat.IsDir() {
+		return false
+	}
+
 	binDir := filepath.Join(path, "bin")
-	if info, err := os.Stat(binDir); err == nil && info.IsDir() {
+	if stat, err := os.Stat(binDir); err == nil && stat.IsDir() {
 		return true
 	}
+
+	for _, exe := range []string{"WorldOfWarships64.exe", "WorldOfWarships.exe", "wows.exe"} {
+		if _, err := os.Stat(filepath.Join(path, exe)); err == nil {
+			return true
+		}
+	}
+
 	return false
 }

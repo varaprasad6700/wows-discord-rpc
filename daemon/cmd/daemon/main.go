@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -16,36 +15,29 @@ import (
 	"github.com/wows-discord-rpc/daemon/internal/process"
 )
 
+var (
+	version          = "dev"
+	defaultDiscordID = "1562101043670556782"
+)
+
 func main() {
-	configPath := flag.String("config", "config.yaml", "Path to daemon configuration file")
+	configPath := flag.String("config", "config.yaml", "Path to config file")
 	flag.Parse()
 
-	log.Println("=====================================================")
-	log.Println("  World of Warships Discord Rich Presence Daemon")
-	log.Println("=====================================================")
+	log.Printf("Starting WoWS Discord Rich Presence Daemon (%s)...", version)
 
-	// 1. Load Configuration
+	// 1. Load configuration
 	cfg, err := config.Load(*configPath)
 	if err != nil {
-		log.Printf("Could not load '%s' (%v). Attempting config.example.yaml...", *configPath, err)
-		cfg, err = config.Load("config.example.yaml")
-		if err != nil {
-			log.Println("Using built-in defaults.")
-			cfg = &config.Config{
-				Backend: config.BackendConfig{URL: config.DefaultBackendURL},
-				Discord: config.DiscordConfig{
-					ClientID:              config.DefaultDiscordClientID,
-					UpdateIntervalSeconds: 15,
-				},
-			}
-		}
+		log.Printf("Warning: Failed to load config from %s: %v. Using defaults.", *configPath, err)
+		cfg = config.DefaultConfig()
 	}
 
-	log.Printf("Backend URL: %s", cfg.Backend.URL)
-	log.Printf("Discord Client ID: %s", cfg.Discord.ClientID)
-	log.Printf("Update Interval: %ds", cfg.Discord.UpdateIntervalSeconds)
+	if cfg.Discord.ClientID == "" {
+		cfg.Discord.ClientID = defaultDiscordID
+	}
 
-	// 2. Resolve WoWS installation path
+	// 2. Discover WoWS installation directory
 	wowsPath := cfg.WoWS.InstallPath
 	if wowsPath == "" {
 		detected, err := detector.FindWoWSPath()
@@ -66,17 +58,10 @@ func main() {
 			log.Printf("Warning: Failed to detect latest WoWS build directory: %v", err)
 		} else {
 			log.Printf("Detected latest WoWS build: %s", buildPath)
-
-			// Look for mod directory relative to current working directory or binary
-			modDir := findModSourceDir()
-			if modDir != "" {
-				if err := detector.EnsureModDeployed(buildPath, modDir); err != nil {
-					log.Printf("Warning: Failed to deploy mod to WoWS: %v", err)
-				} else {
-					log.Printf("Telemetry mod successfully deployed to %s", buildPath)
-				}
+			if err := detector.DeployEmbeddedMod(buildPath); err != nil {
+				log.Printf("Warning: Failed to deploy embedded mod to WoWS: %v", err)
 			} else {
-				log.Println("Notice: 'mod' directory not found locally; skipping auto-deployment.")
+				log.Printf("Telemetry mod successfully deployed to %s", buildPath)
 			}
 		}
 	}
@@ -122,23 +107,4 @@ func main() {
 			log.Printf("Error during presence update: %v", err)
 		}
 	}
-}
-
-func findModSourceDir() string {
-	candidates := []string{
-		"mod",
-		"../mod",
-		"../../mod",
-		filepath.Join(filepath.Dir(os.Args[0]), "mod"),
-		filepath.Join(filepath.Dir(os.Args[0]), "..", "mod"),
-	}
-
-	for _, c := range candidates {
-		if stat, err := os.Stat(c); err == nil && stat.IsDir() {
-			if _, err := os.Stat(filepath.Join(c, "PnFModsLoader.py")); err == nil {
-				return c
-			}
-		}
-	}
-	return ""
 }
