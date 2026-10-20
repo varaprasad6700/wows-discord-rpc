@@ -4,7 +4,41 @@ Real-time World of Warships combat telemetry and high-density status display dir
 
 ---
 
-## Architecture Overview
+## 🚀 Quick Start Guide
+
+### Running the Client Daemon (End-User)
+
+1. **Download**: Grab **`wows-presence-daemon.exe`** from [GitHub Releases](https://github.com/varaprasad6700/wows-discord-rpc/releases).
+2. **Run**: Double-click `wows-presence-daemon.exe`.
+   - The application runs silently in the background with zero terminal prompts.
+   - A naval anchor icon appears in your Windows system notification tray next to the clock.
+   - It automatically detects your World of Warships installation and provisions the embedded telemetry mod.
+3. **Control & Settings**: Right-click the system tray icon to:
+   - **Open Controller UI**: Launch the Option A tabbed control center to monitor live presence, adjust paths/URLs, or check for updates.
+   - **View Log File**: Open `%APPDATA%\wows-rpc\daemon.log` in Notepad for diagnostics.
+   - **Check for Updates**: Query GitHub Releases for the latest version.
+   - **Exit Presence**: Remove Discord status and stop the daemon cleanly.
+
+---
+
+## ✨ Features
+
+- **Set-and-Forget Windows Startup**: Automatically launches silently on Windows login with no command prompt window, living in the system notification tray.
+- **Embedded In-Game Mod**: Telemetry mod is embedded directly inside the single executable (`//go:embed`) and automatically deployed into your WoWS `res_mods` directory without needing external mod files on disk.
+- **Option A Tabbed Controller UI**: Clean dark-mode desktop window with four focused tabs:
+  - **Status**: Live WoWS process detection, Discord IPC connection state, and real-time presence preview.
+  - **Settings**: WoWS install path with native folder browser, metadata server URL, and Windows startup toggle.
+  - **Logs & Diagnostics**: One-click toggle for file logging (`%APPDATA%\wows-rpc\daemon.log`) with "Open Log File" and "Open Folder" actions.
+  - **Updates**: In-app self-updater that checks GitHub Releases and updates the executable in place.
+- **High-Density Combat Presence (Option C)**:
+  - **In Battle (Alive)**: `[IX] Menno van Coehoorn • Random (North)` | `54k HP (74%) | 84k DMG | 2 Kills | 8v9`
+  - **In Battle (Sunk)**: `[IX] Menno van Coehoorn • Random (North)` | `Sunk (Spectating) | 84k DMG | 2 Kills | 8v9`
+  - **In Port**: `In Port` | `Inspecting Fleet & Armory`
+  - **Game Closed**: Discord Rich Presence cleared immediately.
+
+---
+
+## 🏛️ System Architecture
 
 ```
 +-------------------------------------------------------------+
@@ -44,39 +78,7 @@ Real-time World of Warships combat telemetry and high-density status display dir
 
 ---
 
-## Features
-
-- **Set-and-Forget Windows Startup**: Automatically starts silently on Windows login with no command prompt window, living unobtrusively in the system tray next to the clock.
-- **Embedded In-Game Mod**: Telemetry mod is embedded directly inside the single executable (`//go:embed`) and automatically deployed into your WoWS `res_mods` directory.
-- **Option A Tabbed Controller UI**: Clean dark-mode desktop window with four focused tabs:
-  - **Status**: Live WoWS process detection, Discord IPC state, and real-time presence preview.
-  - **Settings**: WoWS install path with native folder browser, metadata server URL, and Windows startup toggle.
-  - **Logs & Diagnostics**: One-click toggle for file logging (`%APPDATA%\wows-rpc\daemon.log`) with "Open Log File" and "Open Folder" actions.
-  - **Updates**: In-app self-updater that checks GitHub Releases and updates the executable in place.
-- **High-Density Combat Presence (Option C)**:
-  - **In Battle (Alive)**: `[IX] Menno van Coehoorn • Random (North)` | `54k HP (74%) | 84k DMG | 2 Kills | 8v9`
-  - **In Battle (Sunk)**: `[IX] Menno van Coehoorn • Random (North)` | `Sunk (Spectating) | 84k DMG | 2 Kills | 8v9`
-  - **In Port**: `In Port` | `Inspecting Fleet & Armory`
-  - **Game Closed**: Discord Rich Presence cleared immediately.
-
----
-
-## Quick Start Guide
-
-### Running the Client Daemon (End-User)
-
-1. Download **`wows-presence-daemon.exe`** from [GitHub Releases](https://github.com/varaprasad6700/wows-discord-rpc/releases).
-2. Double-click `wows-presence-daemon.exe`.
-   - The app starts silently in the background and places an anchor icon in your system tray.
-   - It automatically auto-detects your World of Warships installation and deploys the telemetry mod.
-3. Right-click the system tray icon to:
-   - **Open Controller UI**: View live presence, configure paths, and check updates.
-   - **View Log File**: Open `%APPDATA%\wows-rpc\daemon.log` in Notepad.
-   - **Exit Presence**: Cleanly remove Discord status and close the daemon.
-
----
-
-## Verification & Build Commands
+## 🛠️ Verification & Build Commands
 
 - **Python Mod**:
   ```bash
