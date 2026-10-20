@@ -58,6 +58,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Build Spring Boot JAR Natively
+        working-directory: backend
+        run: |
+          chmod +x gradlew
+          ./gradlew bootJar -x test --no-daemon
+
       - name: Set up QEMU for Multi-Arch
         uses: docker/setup-qemu-action@v3
 
@@ -80,11 +92,11 @@ jobs:
             type=raw,value=${{ github.event.inputs.tag_name || github.ref_name }}
             type=raw,value=latest
 
-      - name: Build and Push Multi-Arch Docker Image
+      - name: Build and Push Fast Multi-Arch Docker Image
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: ./backend/Dockerfile
+          file: ./backend/Dockerfile.release
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
