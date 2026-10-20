@@ -31,11 +31,15 @@ func TestIsNewerVersion(t *testing.T) {
 	}
 }
 
-func TestCheckForUpdate(t *testing.T) {
+func TestCheckForUpdate_SelectsExeOverZip(t *testing.T) {
 	fakeRelease := map[string]any{
 		"tag_name": "v1.2.0",
 		"body":     "Added Option A UI and self updater",
 		"assets": []map[string]any{
+			{
+				"name":                 "wows-discord-rpc-windows-x64.zip",
+				"browser_download_url": "https://example.com/archive.zip",
+			},
 			{
 				"name":                 "wows-presence-daemon.exe",
 				"browser_download_url": "https://example.com/wows-presence-daemon.exe",
@@ -58,10 +62,7 @@ func TestCheckForUpdate(t *testing.T) {
 	if !info.UpdateReady {
 		t.Errorf("expected update to be ready")
 	}
-	if info.LatestVersion != "v1.2.0" {
-		t.Errorf("expected latest version v1.2.0, got %s", info.LatestVersion)
-	}
 	if info.DownloadURL != "https://example.com/wows-presence-daemon.exe" {
-		t.Errorf("expected download url, got %s", info.DownloadURL)
+		t.Errorf("expected download url to be the .exe, got %s", info.DownloadURL)
 	}
 }

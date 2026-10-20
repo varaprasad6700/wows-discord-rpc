@@ -118,6 +118,13 @@ func LaunchAppMode(url string) error {
 	return exec.Command(edgeExe, appArg, "--window-size=540,680").Start()
 }
 
+func Remove() {
+	if currentTray != nil && currentTray.hwnd != 0 {
+		procShellNotifyIconW.Call(NIM_DELETE, uintptr(unsafe.Pointer(&currentTray.nid)))
+		currentTray.hwnd = 0
+	}
+}
+
 func Run(onOpenUI, onOpenLogs, onCheckUpdates, onExit func()) error {
 	className, _ := syscall.UTF16PtrFromString("WoWSPresenceTrayClass")
 	windowName, _ := syscall.UTF16PtrFromString("WoWSPresenceTrayWindow")

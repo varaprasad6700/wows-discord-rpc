@@ -89,6 +89,11 @@ func (s *stateAdapter) CheckUpdate() (*server.UpdateDTO, error) {
 	}, nil
 }
 
+func (s *stateAdapter) ApplyUpdate(downloadURL string) error {
+	logging.Logf("Applying in-place update from %s...", downloadURL)
+	return s.updater.Apply(downloadURL)
+}
+
 func main() {
 	headlessFlag := flag.Bool("headless", false, "Run in headless console mode without system tray")
 	flag.Parse()
@@ -193,6 +198,7 @@ func main() {
 		_ = discordClient.ClearActivity()
 		_ = discordClient.Close()
 		_ = srv.Close()
+		tray.Remove()
 	}
 
 	// 8. If headless or not windows: listen for signals

@@ -84,15 +84,23 @@ func (u *Updater) Check() (*UpdateInfo, error) {
 		UpdateReady:    IsNewerVersion(u.currentVersion, release.TagName),
 	}
 
-	// Look for standalone executable or release package
+	// Look for standalone executable
 	for _, asset := range release.Assets {
 		if strings.EqualFold(asset.Name, "wows-presence-daemon.exe") {
 			info.DownloadURL = asset.DownloadURL
 			break
 		}
 	}
-	if info.DownloadURL == "" && len(release.Assets) > 0 {
-		info.DownloadURL = release.Assets[0].DownloadURL
+	if info.DownloadURL == "" {
+		for _, asset := range release.Assets {
+			if strings.HasSuffix(strings.ToLower(asset.Name), ".exe") {
+				info.DownloadURL = asset.DownloadURL
+				break
+			}
+		}
+	}
+	if info.DownloadURL == "" {
+		info.UpdateReady = false
 	}
 
 	return info, nil

@@ -10,7 +10,9 @@ import (
 	"github.com/wows-discord-rpc/daemon/internal/server"
 )
 
-type mockStateProvider struct{}
+type mockStateProvider struct {
+	appliedURL string
+}
 
 func (m *mockStateProvider) GetStatus() server.StatusDTO {
 	return server.StatusDTO{
@@ -40,6 +42,11 @@ func (m *mockStateProvider) CheckUpdate() (*server.UpdateDTO, error) {
 		LatestVersion:  "v1.1.0",
 		UpdateReady:    false,
 	}, nil
+}
+
+func (m *mockStateProvider) ApplyUpdate(downloadURL string) error {
+	m.appliedURL = downloadURL
+	return nil
 }
 
 func TestServerEndpoints(t *testing.T) {
@@ -89,5 +96,20 @@ func TestServerEndpoints(t *testing.T) {
 
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", res.StatusCode)
+	}
+
+	// 4. Test POST /api/update/apply
+	applyPayload := `{"download_url":"https://example.com/new.exe"}`
+	res, err = http.Post(ts.URL+"/api/update/apply", "application/json", strings.NewReader(applyPayload))
+	if err != nil {
+		t.Fatalf("POST /api/update/apply failed: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", res.StatusCode)
+	}
+	if mockState.appliedURL != "https://example.com/new.exe" {
+		t.Errorf("expected appliedURL to be recorded, got: %s", mockState.appliedURL)
 	}
 }

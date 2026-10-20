@@ -47,6 +47,7 @@ type StateProvider interface {
 	GetConfig() ConfigDTO
 	SaveConfig(cfg ConfigDTO) error
 	CheckUpdate() (*UpdateDTO, error)
+	ApplyUpdate(downloadURL string) error
 }
 
 type Server struct {
@@ -174,6 +175,26 @@ func (s *Server) routes() {
 			return
 		}
 		_ = json.NewEncoder(w).Encode(up)
+	})
+
+	s.mux.HandleFunc("/api/update/apply", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			DownloadURL string `json:"download_url"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if err := s.stateProvider.ApplyUpdate(req.DownloadURL); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "updating"})
 	})
 }
 
