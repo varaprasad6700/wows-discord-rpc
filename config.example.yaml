@@ -1,8 +1,8 @@
 wows:
-  install_path: "" # Optional. Auto-detected via Windows Registry (WGC/Steam) if empty.
+  install_path: "" # Optional. Auto-detected via Wargaming Game Center / Steam if empty.
 
 backend:
-  url: "http://localhost:8080"
+  url: "https://wows-meta.varaprasad.co.in"
 
 discord:
   client_id: "1562101043670556782" # World of Warships Discord Application ID

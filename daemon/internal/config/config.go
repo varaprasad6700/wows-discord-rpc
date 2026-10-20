@@ -26,12 +26,15 @@ type DiscordConfig struct {
 	UpdateIntervalSeconds int    `yaml:"update_interval_seconds"`
 }
 
-const DefaultDiscordClientID = "1562101043670556782"
+const (
+	DefaultBackendURL      = "https://wows-meta.varaprasad.co.in"
+	DefaultDiscordClientID = "1562101043670556782"
+)
 
 func DefaultConfig() *Config {
 	return &Config{
 		Backend: BackendConfig{
-			URL: "http://localhost:8080",
+			URL: DefaultBackendURL,
 		},
 		Discord: DiscordConfig{
 			ClientID:              DefaultDiscordClientID,
@@ -54,7 +57,7 @@ func Load(path string) (*Config, error) {
 
 	// Apply fallbacks if empty
 	if cfg.Backend.URL == "" {
-		cfg.Backend.URL = "http://localhost:8080"
+		cfg.Backend.URL = DefaultBackendURL
 	}
 	if cfg.Discord.ClientID == "" {
 		cfg.Discord.ClientID = DefaultDiscordClientID

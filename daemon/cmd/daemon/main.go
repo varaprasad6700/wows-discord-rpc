@@ -32,7 +32,7 @@ func main() {
 		if err != nil {
 			log.Println("Using built-in defaults.")
 			cfg = &config.Config{
-				Backend: config.BackendConfig{URL: "http://localhost:8080"},
+				Backend: config.BackendConfig{URL: config.DefaultBackendURL},
 				Discord: config.DiscordConfig{
 					ClientID:              config.DefaultDiscordClientID,
 					UpdateIntervalSeconds: 15,

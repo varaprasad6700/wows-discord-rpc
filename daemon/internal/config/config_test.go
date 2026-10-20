@@ -16,8 +16,8 @@ func TestLoadConfig_ExampleFile(t *testing.T) {
 		t.Fatalf("expected config.example.yaml to load successfully, got: %v", err)
 	}
 
-	if cfg.Backend.URL != "http://localhost:8080" {
-		t.Errorf("expected backend URL 'http://localhost:8080', got '%s'", cfg.Backend.URL)
+	if cfg.Backend.URL != "https://wows-meta.varaprasad.co.in" {
+		t.Errorf("expected backend URL 'https://wows-meta.varaprasad.co.in', got '%s'", cfg.Backend.URL)
 	}
 
 	if cfg.Discord.ClientID != "1562101043670556782" {
@@ -50,8 +50,8 @@ discord:
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if cfg.Backend.URL != "http://localhost:8080" {
-		t.Errorf("expected default backend URL 'http://localhost:8080', got '%s'", cfg.Backend.URL)
+	if cfg.Backend.URL != "https://wows-meta.varaprasad.co.in" {
+		t.Errorf("expected default backend URL 'https://wows-meta.varaprasad.co.in', got '%s'", cfg.Backend.URL)
 	}
 
 	if cfg.Discord.ClientID != "999" {
