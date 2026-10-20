@@ -1,0 +1,7 @@
+.superpowers/
+.reference/
+*.exe
+*.log
+bin/
+build/
+.gradle/
