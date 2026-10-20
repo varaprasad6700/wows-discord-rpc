@@ -147,3 +147,11 @@ As requested:
 - Specific Discord Application asset upload scripts or hosting icon CDN URLs.
 - Exact Go package layout (`cmd/daemon`, `internal/wows`, `internal/discord`, `internal/api`).
 - Exact Spring Boot package layout (`com.wows.meta.controller`, `service`, `repository`, `model`).
+
+---
+
+## References & Official Resources
+- **Wargaming ModSDK**: [https://github.com/wgmods/ModSDK](https://github.com/wgmods/ModSDK) (Official modding SDK data, assets, and localization definitions)
+- **Wargaming Mods-API-Documentation**: [https://github.com/wgmods/Mods-API-Documentation](https://github.com/wgmods/Mods-API-Documentation) (Official Python ModsAPI event hooks, callback specifications, and runtime environment details)
+- **Wargaming Developer Room (Encyclopedia API)**: [https://developers.wargaming.net/reference/all/wows/encyclopedia/ships/](https://developers.wargaming.net/reference/all/wows/encyclopedia/ships/)
+
