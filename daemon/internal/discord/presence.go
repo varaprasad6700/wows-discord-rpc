@@ -109,8 +109,16 @@ func FormatOptionC(arena *watcher.ArenaInfo, live *watcher.LiveState, ship *api.
 		LargeImage: "wows_logo",
 		LargeText:  fmt.Sprintf("%s - %d/%d HP", name, live.Health, live.MaxHealth),
 	}
+
 	if shipClass != "" {
-		assets.SmallText = shipClass
+		normalizedClass := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(shipClass, " ", ""), "_", ""))
+		if live.IsAlive && live.Health > 0 {
+			assets.SmallImage = normalizedClass
+			assets.SmallText = shipClass
+		} else {
+			assets.SmallImage = "sunk"
+			assets.SmallText = "Sunk (Spectating)"
+		}
 	}
 
 	return &Activity{
