@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: wows-meta-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/wows_meta}
+    username: ${SPRING_DATASOURCE_USERNAME:wows_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:wows_password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+
+wargaming:
+  api:
+    application-id: ${WARGAMING_APPLICATION_ID:demo_app_id}
+    base-url: https://api.worldofwarships.eu
