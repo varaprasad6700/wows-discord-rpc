@@ -2,6 +2,7 @@ package discord
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/wows-discord-rpc/daemon/internal/api"
 	"github.com/wows-discord-rpc/daemon/internal/watcher"
@@ -42,6 +43,12 @@ func FormatOptionC(arena *watcher.ArenaInfo, live *watcher.LiveState, ship *api.
 	// Resolve ship tier and display name
 	tier := "?"
 	name := fmt.Sprintf("Ship #%d", live.ShipID)
+	if arena.PlayerVehicle != "" {
+		if cleanName := watcher.CleanVehicleName(arena.PlayerVehicle); cleanName != "" {
+			name = cleanName
+		}
+	}
+
 	var shipClass string
 
 	if ship != nil {
@@ -50,20 +57,27 @@ func FormatOptionC(arena *watcher.ArenaInfo, live *watcher.LiveState, ship *api.
 		} else if ship.Tier > 0 {
 			tier = fmt.Sprintf("%d", ship.Tier)
 		}
-		if ship.Name != "" {
+		if ship.Name != "" && !strings.HasPrefix(ship.Name, "Ship #") {
 			name = ship.Name
 		}
 		shipClass = ship.ShipClass
 	}
 
 	// Details line: [{RomanTier}] {ShipName} • {BattleType} ({MapName})
+	var shipDisplay string
+	if tier != "" && tier != "?" {
+		shipDisplay = fmt.Sprintf("[%s] %s", tier, name)
+	} else {
+		shipDisplay = name
+	}
+
 	var details string
 	if arena.BattleType != "" && arena.MapName != "" {
-		details = fmt.Sprintf("[%s] %s • %s (%s)", tier, name, arena.BattleType, arena.MapName)
+		details = fmt.Sprintf("%s • %s (%s)", shipDisplay, arena.BattleType, arena.MapName)
 	} else if arena.BattleType != "" {
-		details = fmt.Sprintf("[%s] %s • %s", tier, name, arena.BattleType)
+		details = fmt.Sprintf("%s • %s", shipDisplay, arena.BattleType)
 	} else {
-		details = fmt.Sprintf("[%s] %s", tier, name)
+		details = shipDisplay
 	}
 
 	// State line:

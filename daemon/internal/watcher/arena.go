@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -24,10 +25,11 @@ type RawArenaPlayer struct {
 }
 
 type ArenaInfo struct {
-	MapName      string
-	BattleType   string
-	PlayerShipID int64
-	StartTime    time.Time
+	MapName       string
+	BattleType    string
+	PlayerShipID  int64
+	PlayerVehicle string
+	StartTime     time.Time
 }
 
 var mapDictionary = map[string]string{
@@ -74,11 +76,14 @@ var battleTypeMap = map[string]string{
 }
 
 func CleanMapName(rawMap string) string {
+	cleaned := strings.TrimPrefix(rawMap, "spaces/")
+	if name, ok := mapDictionary["spaces/"+cleaned]; ok {
+		return name
+	}
 	if name, ok := mapDictionary[rawMap]; ok {
 		return name
 	}
 	// Fallback cleanup if not in explicit dictionary
-	cleaned := strings.TrimPrefix(rawMap, "spaces/")
 	parts := strings.Split(cleaned, "_")
 	if len(parts) > 0 {
 		return strings.Title(parts[len(parts)-1])
@@ -97,6 +102,34 @@ func CleanBattleType(rawType string) string {
 	return strings.Title(rawType)
 }
 
+// CleanVehicleName extracts a clean, human-readable ship name from an in-game identifier.
+// e.g. "PHSC019-Menno-Van-Coehoorn" -> "Menno Van Coehoorn"
+// e.g. "PWSB108_Musashi_1942" -> "Musashi"
+func CleanVehicleName(rawVehicle string) string {
+	if rawVehicle == "" {
+		return ""
+	}
+
+	// Normalize separator
+	s := strings.ReplaceAll(rawVehicle, "_", "-")
+	parts := strings.Split(s, "-")
+	if len(parts) > 1 {
+		// Drop internal ID prefix (e.g. PHSC019, PWSB108)
+		nameParts := parts[1:]
+		// Strip trailing 4-digit build year if present (e.g. 1942, 1943)
+		if len(nameParts) > 1 {
+			last := nameParts[len(nameParts)-1]
+			if len(last) == 4 {
+				if _, err := strconv.Atoi(last); err == nil {
+					nameParts = nameParts[:len(nameParts)-1]
+				}
+			}
+		}
+		return strings.Join(nameParts, " ")
+	}
+	return rawVehicle
+}
+
 func ParseArenaInfo(filePath string) (*ArenaInfo, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -109,8 +142,9 @@ func ParseArenaInfo(filePath string) (*ArenaInfo, error) {
 	}
 
 	info := &ArenaInfo{
-		MapName:    CleanMapName(raw.MapDisplayName),
-		BattleType: CleanBattleType(raw.MatchGroup),
+		MapName:       CleanMapName(raw.MapDisplayName),
+		BattleType:    CleanBattleType(raw.MatchGroup),
+		PlayerVehicle: raw.PlayerVehicle,
 	}
 
 	// Parse date time format "DD.MM.YYYY HH:MM:SS"
