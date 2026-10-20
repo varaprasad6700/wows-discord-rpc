@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 )
 
@@ -51,32 +52,32 @@ func EnsureModDeployed(buildPath, modSourceDir string) error {
 	}
 
 	// 1. Deploy PnFModsLoader.py
-	srcLoader := filepath.Join(modSourceDir, "PnFModsLoader.py")
-	dstLoader := filepath.Join(resModsDir, "PnFModsLoader.py")
-	if err := syncFile(srcLoader, dstLoader); err != nil {
-		return fmt.Errorf("syncing PnFModsLoader.py: %w", err)
+	loaderSrc := filepath.Join(modSourceDir, "PnFModsLoader.py")
+	loaderDst := filepath.Join(resModsDir, "PnFModsLoader.py")
+	if err := copyIfDifferent(loaderSrc, loaderDst); err != nil {
+		return fmt.Errorf("deploying PnFModsLoader.py: %w", err)
 	}
 
 	// 2. Deploy TelemetryExporter/Main.py
-	srcMain := filepath.Join(modSourceDir, "PnFMods", "TelemetryExporter", "Main.py")
-	dstMain := filepath.Join(telemetryDir, "Main.py")
-	if err := syncFile(srcMain, dstMain); err != nil {
-		return fmt.Errorf("syncing TelemetryExporter/Main.py: %w", err)
+	mainSrc := filepath.Join(modSourceDir, "PnFMods", "TelemetryExporter", "Main.py")
+	mainDst := filepath.Join(telemetryDir, "Main.py")
+	if err := copyIfDifferent(mainSrc, mainDst); err != nil {
+		return fmt.Errorf("deploying TelemetryExporter Main.py: %w", err)
 	}
 
 	return nil
 }
 
-// syncFile copies src to dst if dst does not exist or contents differ
-func syncFile(src, dst string) error {
+func copyIfDifferent(src, dst string) error {
 	srcData, err := os.ReadFile(src)
 	if err != nil {
 		return fmt.Errorf("reading source file %s: %w", src, err)
 	}
 
-	dstData, err := os.ReadFile(dst)
-	if err == nil && bytes.Equal(srcData, dstData) {
-		return nil // Already up to date
+	if dstData, err := os.ReadFile(dst); err == nil {
+		if bytes.Equal(srcData, dstData) {
+			return nil // Identical content, no copy needed
+		}
 	}
 
 	tmpDst := dst + ".tmp"
@@ -97,16 +98,42 @@ func syncFile(src, dst string) error {
 
 // FindWoWSPath attempts to auto-discover World of Warships installation
 func FindWoWSPath() (string, error) {
-	// Standard candidate paths on Windows
+	// 1. Check Wargaming Game Center preferences.xml
+	programData := os.Getenv("ProgramData")
+	if programData == "" {
+		programData = `C:\ProgramData`
+	}
+	prefPath := filepath.Join(programData, "Wargaming.net", "GameCenter", "preferences.xml")
+	if data, err := os.ReadFile(prefPath); err == nil {
+		reWows := regexp.MustCompile(`(?i)<WOWS>(.*?)</WOWS>`)
+		if matches := reWows.FindSubmatch(data); len(matches) > 1 {
+			p := string(matches[1])
+			if IsValidWoWSPath(p) {
+				return p, nil
+			}
+		}
+		reDir := regexp.MustCompile(`(?i)<working_dir>(.*?World_of_Warships.*?)</working_dir>`)
+		if matches := reDir.FindSubmatch(data); len(matches) > 1 {
+			p := string(matches[1])
+			if IsValidWoWSPath(p) {
+				return p, nil
+			}
+		}
+	}
+
+	// 2. Standard candidate paths on Windows
 	candidates := []string{
+		`E:\WarGaming Games\World_of_Warships`,
+		`C:\WarGaming Games\World_of_Warships`,
+		`D:\WarGaming Games\World_of_Warships`,
 		`C:\Games\World_of_Warships`,
 		`D:\Games\World_of_Warships`,
 		`E:\Games\World_of_Warships`,
+		`C:\Games\World_of_Warships_EU`,
+		`C:\Games\World_of_Warships_NA`,
 		`C:\Program Files (x86)\Steam\steamapps\common\World of Warships`,
 		`D:\SteamLibrary\steamapps\common\World of Warships`,
 		`E:\SteamLibrary\steamapps\common\World of Warships`,
-		`C:\Games\World_of_Warships_EU`,
-		`C:\Games\World_of_Warships_NA`,
 	}
 
 	for _, path := range candidates {
