@@ -18,6 +18,39 @@ current_damage = 0
 current_frags = 0
 self_ship_id = None
 
+def _get_os():
+    try:
+        import xml.sax.saxutils as _sax
+        if hasattr(_sax, "os"):
+            return _sax.os
+    except Exception:
+        pass
+    return None
+
+def _get_events():
+    try:
+        return events
+    except NameError:
+        return None
+
+def _get_callbacks():
+    try:
+        return callbacks
+    except NameError:
+        return None
+
+def _get_battle():
+    try:
+        return battle
+    except NameError:
+        return None
+
+def _get_utils():
+    try:
+        return utils
+    except NameError:
+        return None
+
 def _simple_json_dump(obj):
     if obj is True:
         return "true"
@@ -42,29 +75,22 @@ def _simple_json_dump(obj):
     return "null"
 
 def to_json_str(payload):
-    try:
-        import utils
-        if hasattr(utils, "jsonEncode"):
-            return utils.jsonEncode(payload)
-    except Exception:
-        pass
-
-    try:
-        import json
-        return json.dumps(payload)
-    except Exception:
-        pass
-
+    u = _get_utils()
+    if u and hasattr(u, "jsonEncode"):
+        try:
+            return u.jsonEncode(payload)
+        except Exception:
+            pass
     return _simple_json_dump(payload)
 
 def log_msg(msg):
-    try:
-        import utils
-        if hasattr(utils, "logInfo"):
-            utils.logInfo("[TelemetryExporter] " + str(msg))
+    u = _get_utils()
+    if u and hasattr(u, "logInfo"):
+        try:
+            u.logInfo("[TelemetryExporter] " + str(msg))
             return
-    except Exception:
-        pass
+        except Exception:
+            pass
     try:
         print("[TelemetryExporter] " + str(msg))
     except Exception:
@@ -73,37 +99,50 @@ def log_msg(msg):
 def atomic_write_json(file_path, payload):
     data_str = to_json_str(payload)
     written = False
+    _os = _get_os()
 
-    # Standalone environment with os support
-    try:
-        import os
+    if _os:
         tmp_path = file_path + ".tmp"
-        with open(tmp_path, "w") as f:
-            f.write(data_str)
-            f.flush()
         try:
-            if hasattr(os, "replace"):
-                os.replace(tmp_path, file_path)
+            with open(tmp_path, "w") as f:
+                f.write(data_str)
+                f.flush()
+            if hasattr(_os, "replace"):
+                _os.replace(tmp_path, file_path)
             else:
-                if os.path.exists(file_path):
+                if hasattr(_os, "path") and _os.path.exists(file_path):
                     try:
-                        os.remove(file_path)
+                        _os.remove(file_path)
                     except Exception:
                         pass
-                os.rename(tmp_path, file_path)
+                _os.rename(tmp_path, file_path)
             written = True
         except Exception:
             pass
-    except Exception:
-        pass
 
-    # Direct write fallback for restricted WoWS sandbox
     if not written:
         try:
             with open(file_path, "w") as f:
                 f.write(data_str)
         except Exception as e:
             log_msg("Write failed: " + str(e))
+
+def export_state_to_all_paths(payload):
+    # 1. Write to cwd
+    atomic_write_json("wows_live_state.json", payload)
+
+    # 2. If utils and os available, resolve build and root directories
+    u = _get_utils()
+    _os = _get_os()
+    if u and hasattr(u, "getModDir") and _os and hasattr(_os, "path"):
+        try:
+            mod_dir = u.getModDir() # .../bin/<build>/res_mods/PnFMods
+            build_dir = _os.path.abspath(_os.path.join(mod_dir, "..", ".."))
+            root_dir = _os.path.abspath(_os.path.join(build_dir, "..", ".."))
+            atomic_write_json(_os.path.join(build_dir, "wows_live_state.json"), payload)
+            atomic_write_json(_os.path.join(root_dir, "wows_live_state.json"), payload)
+        except Exception:
+            pass
 
 def build_telemetry_payload(battle_api, ship_id=None, damage_dealt=0, frags=0):
     payload = {
@@ -165,24 +204,19 @@ def build_telemetry_payload(battle_api, ship_id=None, damage_dealt=0, frags=0):
 def tick_telemetry():
     global callback_handle, current_damage, current_frags, self_ship_id
     try:
-        battle_module = None
-        try:
-            import battle as battle_module
-        except Exception:
-            battle_module = globals().get("battle")
-
-        if battle_module:
-            if hasattr(battle_module, "getSelfPlayerInfo"):
+        b = _get_battle()
+        if b:
+            if hasattr(b, "getSelfPlayerInfo"):
                 try:
-                    pinfo = battle_module.getSelfPlayerInfo()
-                    if pinfo:
+                    pinfo = b.getSelfPlayerInfo()
+                    if pinfo and isinstance(pinfo, dict):
                         self_ship_id = pinfo.get("shipId", self_ship_id)
                 except Exception:
                     pass
 
-            if hasattr(battle_module, "getBattleStatistics"):
+            if hasattr(b, "getBattleStatistics"):
                 try:
-                    stats = battle_module.getBattleStatistics()
+                    stats = b.getBattleStatistics()
                     if stats:
                         for attr in ("damageDealt", "damage", "totalDamage"):
                             if hasattr(stats, attr):
@@ -198,24 +232,19 @@ def tick_telemetry():
                     pass
 
         payload = build_telemetry_payload(
-            battle_api=battle_module,
+            battle_api=b,
             ship_id=self_ship_id,
             damage_dealt=current_damage,
             frags=current_frags,
         )
-        atomic_write_json("wows_live_state.json", payload)
+        export_state_to_all_paths(payload)
     except Exception as e:
         log_msg("tick error: " + str(e))
 
-    callbacks_module = None
-    try:
-        import callbacks as callbacks_module
-    except Exception:
-        callbacks_module = globals().get("callbacks")
-
-    if callbacks_module and hasattr(callbacks_module, "callback"):
+    c = _get_callbacks()
+    if c and hasattr(c, "callback"):
         try:
-            callback_handle = callbacks_module.callback(TICK_INTERVAL, tick_telemetry)
+            callback_handle = c.callback(TICK_INTERVAL, tick_telemetry)
         except Exception:
             pass
 
@@ -239,38 +268,28 @@ def on_battle_start(*args, **kwargs):
 def on_battle_end(*args, **kwargs):
     global callback_handle
     log_msg("Battle ended, clearing telemetry loop.")
-    callbacks_module = None
-    try:
-        import callbacks as callbacks_module
-    except Exception:
-        callbacks_module = globals().get("callbacks")
-
-    if callback_handle is not None and callbacks_module and hasattr(callbacks_module, "cancel"):
+    c = _get_callbacks()
+    if callback_handle is not None and c and hasattr(c, "cancel"):
         try:
-            callbacks_module.cancel(callback_handle)
+            c.cancel(callback_handle)
         except Exception:
             pass
         callback_handle = None
 
-    atomic_write_json("wows_live_state.json", {"in_battle": False})
+    export_state_to_all_paths({"in_battle": False})
 
-# Register event callbacks
-events_module = None
-try:
-    import events as events_module
-except Exception:
-    events_module = globals().get("events")
-
-if events_module:
+# Register event callbacks directly from injected scope
+ev = _get_events()
+if ev:
     try:
-        if hasattr(events_module, "onBattleStart"):
-            events_module.onBattleStart(on_battle_start)
-        if hasattr(events_module, "onBattleEnd"):
-            events_module.onBattleEnd(on_battle_end)
-        if hasattr(events_module, "onBattleQuit"):
-            events_module.onBattleQuit(on_battle_end)
-        if hasattr(events_module, "onReceiveShellInfo"):
-            events_module.onReceiveShellInfo(on_receive_shell_info)
-        log_msg("TelemetryExporter loaded and hooked to game events.")
+        if hasattr(ev, "onBattleStart"):
+            ev.onBattleStart(on_battle_start)
+        if hasattr(ev, "onBattleEnd"):
+            ev.onBattleEnd(on_battle_end)
+        if hasattr(ev, "onBattleQuit"):
+            ev.onBattleQuit(on_battle_end)
+        if hasattr(ev, "onReceiveShellInfo"):
+            ev.onReceiveShellInfo(on_receive_shell_info)
+        log_msg("TelemetryExporter loaded and hooked to game events successfully.")
     except Exception as e:
         log_msg("Hook error: " + str(e))

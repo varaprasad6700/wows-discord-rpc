@@ -112,5 +112,14 @@ class TestTelemetryExporter(unittest.TestCase):
         self.assertEqual(payload["allies_alive"], 0)
         self.assertEqual(payload["enemies_alive"], 0)
 
+    def test_no_forbidden_globals_or_builtins_in_mod(self):
+        mod_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "PnFMods", "TelemetryExporter", "Main.py"))
+        with open(mod_file, "r") as f:
+            content = f.read()
+        self.assertNotIn("globals()", content, "globals() is forbidden in WoWS Python sandbox")
+        self.assertNotIn("locals()", content, "locals() is forbidden in WoWS Python sandbox")
+        self.assertNotIn("import json", content, "import json is forbidden in WoWS Python sandbox")
+        self.assertNotIn("import os", content, "top-level import os is forbidden in WoWS Python sandbox")
+
 if __name__ == "__main__":
     unittest.main()
