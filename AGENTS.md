@@ -25,8 +25,8 @@ This project provides real-time World of Warships combat telemetry and status di
                              | (File watcher / polling)
                              v
              +-------------------------------+
-             |       Go Local Daemon         |
-             |   (wows-presence-daemon.exe)  |
+             |    Go Background Daemon       |
+             |   (System Tray + Controller)  |
              +---------------+---------------+
                              |
          +-------------------+-------------------+
@@ -57,7 +57,9 @@ Contains the lightweight end-user components distributed via GitHub Releases:
   - `PnFMods/TelemetryExporter/Main.py`: In-game Python telemetry script capturing live health, damage dealt, frags, and living team numbers.
 - **`daemon/`**:
   - Go application (`wows-presence-daemon.exe`) that detects the game installation, installs/verifies the mod, watches game state, connects to Discord IPC named pipe (`\\.\pipe\discord-ipc-0`), and resolves ship metadata.
-- **`config.example.yaml`**: Default daemon configuration file.
+  - Includes native Windows system tray icon, Edge app mode launcher, loopback server for Option A tabbed controller, and GitHub self-updater.
+- **`assets/discord/`**:
+  - 512×512 RGBA PNG art assets for Discord Rich Presence (`wows_logo`, `cruiser`, `battleship`, `destroyer`, `aircarrier`, `submarine`, `sunk`).
 
 ### B. Backend Service (`wows-meta-service`) — Target: Private Gitea
 Contains the self-hosted ship encyclopedia metadata cache:
@@ -73,7 +75,7 @@ Contains the self-hosted ship encyclopedia metadata cache:
 ## 3. Technology Stack & Environment
 
 - **Operating System**: Windows (primary target for WoWS client and Go daemon).
-- **Go Daemon**: Go 1.22+ (native binary, zero runtime dependencies).
+- **Go Daemon**: Go 1.22+ (native binary, zero runtime dependencies, `//go:embed` for UI and mod assets).
 - **In-Game Mod**: Python 2.7 & 3 compatible polyglot (WoWS BigWorld client uses embedded Python).
 - **Backend Service**: Kotlin 1.9+, Java/JDK 21, Spring Boot 3.x, Gradle.
 - **Database**: PostgreSQL 16.
@@ -89,33 +91,31 @@ Contains the self-hosted ship encyclopedia metadata cache:
    - **Fallback**: `In Port - Inspecting Fleet & Armory`
 2. **Atomic State Serialization**:
    - The Python mod writes to `wows_live_state.json.tmp` and renames/replaces it atomically to `wows_live_state.json` to prevent partial reads by the daemon.
-3. **Mod Loader Provisioning**:
-   - The daemon automatically places `PnFModsLoader.py` into `bin/<build_id>/res_mods/` if missing, allowing vanilla installations without modpacks to run the telemetry exporter.
-4. **Process Tracking**:
-   - The daemon checks for `WorldOfWarships64.exe`. If the game closes, Discord Rich Presence is cleared immediately rather than lingering as "In Port".
+3. **Mod Loader Provisioning & Embedding**:
+   - The daemon embeds the full mod tree (`//go:embed`) and automatically places `PnFModsLoader.py` and `TelemetryExporter/Main.py` into `bin/<build_id>/res_mods/` if missing. No external `mod/` folder on disk is required.
+4. **Python Mod Sandbox Rules**:
+   - NEVER use `import json`, `import os`, `globals()`, or `locals()` in in-game Python scripts (`Main.py`). WoWS's BigWorld sandbox will raise unhandled `NameError` or `ImportError`. Always use injected `utils`, `events`, `callbacks`, `battle`, and `xml.sax.saxutils.os`.
+5. **Windows Background Tray & Controller**:
+   - Compiled with `-H=windowsgui` so no console prompt opens. Runs in the system tray next to the Windows clock with a right-click context menu.
+   - Option A Tabbed Controller UI is served on an internal loopback server (`http://127.0.0.1:<port>`) and launched in standalone Edge application mode (`msedge.exe --app`).
+6. **Logging & Startup Paths**:
+   - File logs: `%APPDATA%\wows-rpc\daemon.log` (capped at 5MB with 1 backup).
+   - Config: `%APPDATA%\wows-rpc\config.yaml`.
+   - Windows Startup: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\WoWSPresence`.
 
 ---
 
-## 5. Specifications & Reference Links
-
-- **Design Document**: [`docs/superpowers/specs/2026-10-20-wows-discord-rpc-design.md`](docs/superpowers/specs/2026-10-20-wows-discord-rpc-design.md)
-- **Official ModSDK**: [https://github.com/wgmods/ModSDK](https://github.com/wgmods/ModSDK)
-- **Official Mods-API Documentation**: [https://github.com/wgmods/Mods-API-Documentation](https://github.com/wgmods/Mods-API-Documentation)
-- **Wargaming Developer Portal**: [https://developers.wargaming.net/reference/all/wows/encyclopedia/ships/](https://developers.wargaming.net/reference/all/wows/encyclopedia/ships/)
-
----
-
-## 6. Verification & Test Commands
+## 5. Verification & Test Commands
 
 - **Python Mod**:
   ```bash
   python -m unittest discover -s mod/tests
   ```
 - **Go Daemon**:
-  ```bash
+  ```powershell
   cd daemon
   go test -v ./...
-  go build -o ../wows-presence-daemon.exe ./cmd/daemon
+  go build -ldflags "-H=windowsgui -X main.version=v1.1.0 -X main.defaultDiscordID=1562101043670556782" -o ../wows-presence-daemon.exe ./cmd/daemon
   ```
 - **Backend Service**:
   ```powershell
