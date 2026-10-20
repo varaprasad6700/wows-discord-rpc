@@ -102,3 +102,24 @@ Contains the self-hosted ship encyclopedia metadata cache:
 - **Official ModSDK**: [https://github.com/wgmods/ModSDK](https://github.com/wgmods/ModSDK)
 - **Official Mods-API Documentation**: [https://github.com/wgmods/Mods-API-Documentation](https://github.com/wgmods/Mods-API-Documentation)
 - **Wargaming Developer Portal**: [https://developers.wargaming.net/reference/all/wows/encyclopedia/ships/](https://developers.wargaming.net/reference/all/wows/encyclopedia/ships/)
+
+---
+
+## 6. Verification & Test Commands
+
+- **Python Mod**:
+  ```bash
+  python -m unittest discover -s mod/tests
+  ```
+- **Go Daemon**:
+  ```bash
+  cd daemon
+  go test -v ./...
+  go build -o ../wows-presence-daemon.exe ./cmd/daemon
+  ```
+- **Backend Service**:
+  ```powershell
+  $env:JAVA_HOME = "C:\Users\pothu\AppData\Local\Programs\IntelliJ IDEA\jbr"
+  cd backend
+  .\gradlew.bat test
+  ```
