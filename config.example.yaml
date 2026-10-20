@@ -1,0 +1,9 @@
+wows:
+  install_path: "" # Optional. Auto-detected via Windows Registry (WGC/Steam) if empty.
+
+backend:
+  url: "http://localhost:8080"
+
+discord:
+  client_id: "123456789012345678"
+  update_interval_seconds: 15
