@@ -17,6 +17,9 @@ callback_handle = None
 current_damage = 0
 current_frags = 0
 self_ship_id = None
+self_avatar_id = None
+has_damages_hook = False
+killed_victims = set()
 
 def _get_os():
     try:
@@ -50,6 +53,25 @@ def _get_utils():
         return utils
     except NameError:
         return None
+
+def _extract_ship_id(obj):
+    if obj is None:
+        return None
+    if isinstance(obj, dict):
+        return obj.get("shipId")
+    return getattr(obj, "shipId", None)
+
+def _extract_avatar_id(obj):
+    if obj is None:
+        return None
+    if isinstance(obj, dict):
+        return obj.get("id") or obj.get("avatarId")
+    return getattr(obj, "id", None) or getattr(obj, "avatarId", None)
+
+def _extract_damage_entry(entry):
+    if isinstance(entry, dict):
+        return entry.get("vehicleID"), entry.get("damage")
+    return getattr(entry, "vehicleID", None), getattr(entry, "damage", None)
 
 def _simple_json_dump(obj):
     if obj is True:
@@ -202,15 +224,19 @@ def build_telemetry_payload(battle_api, ship_id=None, damage_dealt=0, frags=0):
     return payload
 
 def tick_telemetry():
-    global callback_handle, current_damage, current_frags, self_ship_id
+    global callback_handle, current_damage, current_frags, self_ship_id, self_avatar_id
     try:
         b = _get_battle()
         if b:
             if hasattr(b, "getSelfPlayerInfo"):
                 try:
                     pinfo = b.getSelfPlayerInfo()
-                    if pinfo and isinstance(pinfo, dict):
-                        self_ship_id = pinfo.get("shipId", self_ship_id)
+                    s_id = _extract_ship_id(pinfo)
+                    if s_id is not None:
+                        self_ship_id = s_id
+                    a_id = _extract_avatar_id(pinfo)
+                    if a_id is not None:
+                        self_avatar_id = a_id
                 except Exception:
                     pass
 
@@ -248,26 +274,136 @@ def tick_telemetry():
         except Exception:
             pass
 
-def on_receive_shell_info(victim_id, shooter_id, ammo_id, mat_id, shoot_id, booleans, damage, *args, **kwargs):
-    global current_damage, current_frags, self_ship_id
+def on_receive_damages_on_ship(victim_id, damages, *args, **kwargs):
+    global current_damage, self_ship_id, self_avatar_id
     try:
+        b = _get_battle()
+        self_player = None
+        if b and hasattr(b, "getSelfPlayerInfo"):
+            try:
+                self_player = b.getSelfPlayerInfo()
+            except Exception:
+                self_player = None
+
+        self_p_id = _extract_avatar_id(self_player) if self_player else self_avatar_id
+        self_s_id = _extract_ship_id(self_player) if self_player else self_ship_id
+
+        self_ship = None
+        if b and hasattr(b, "getSelfPlayerShip"):
+            try:
+                self_ship = b.getSelfPlayerShip()
+            except Exception:
+                self_ship = None
+        self_veh_id = getattr(self_ship, "id", None) or getattr(self_ship, "_Ship__id", None)
+
+        if not damages or not isinstance(damages, (list, tuple)):
+            return
+
+        for entry in damages:
+            if not entry:
+                continue
+            attacker_veh_id, dmg_val = _extract_damage_entry(entry)
+            if dmg_val is None or dmg_val <= 0:
+                continue
+
+            # Check if attacker is self
+            is_self = False
+
+            if self_veh_id is not None and attacker_veh_id == self_veh_id:
+                is_self = True
+            elif self_s_id is not None and attacker_veh_id == self_s_id:
+                is_self = True
+            elif b and hasattr(b, "getPlayerByVehicleId"):
+                try:
+                    attacker = b.getPlayerByVehicleId(attacker_veh_id)
+                    if attacker is not None:
+                        att_id = _extract_avatar_id(attacker)
+                        att_ship_id = _extract_ship_id(attacker)
+                        if self_p_id is not None and att_id == self_p_id:
+                            is_self = True
+                        elif self_s_id is not None and att_ship_id == self_s_id:
+                            is_self = True
+                except Exception:
+                    pass
+
+            if is_self:
+                # Do not count self-inflicted/collision damage if victim is self
+                if self_veh_id is not None and victim_id == self_veh_id:
+                    continue
+                current_damage += int(round(float(dmg_val)))
+    except Exception as e:
+        log_msg("damages error: " + str(e))
+
+def on_receive_shell_info(victim_id, shooter_id, ammo_id, mat_id, shoot_id, booleans, damage, *args, **kwargs):
+    global current_damage, current_frags, self_ship_id, self_avatar_id, has_damages_hook, killed_victims
+    try:
+        is_self = False
         if self_ship_id is not None and shooter_id == self_ship_id:
-            current_damage += int(damage)
+            is_self = True
+        else:
+            b = _get_battle()
+            if b and hasattr(b, "getPlayerByVehicleId") and hasattr(b, "getSelfPlayerInfo"):
+                try:
+                    shooter = b.getPlayerByVehicleId(shooter_id)
+                    me = b.getSelfPlayerInfo()
+                    if shooter and me:
+                        if _extract_avatar_id(shooter) == _extract_avatar_id(me):
+                            is_self = True
+                        elif _extract_ship_id(shooter) == _extract_ship_id(me):
+                            is_self = True
+                except Exception:
+                    pass
+
+        if is_self:
+            # If onReceiveDamagesOnShip is not hooked, fallback to shell damage
+            if not has_damages_hook:
+                current_damage += int(round(float(damage)))
             if isinstance(booleans, (int, long)) and (booleans & 8):
+                if victim_id not in killed_victims:
+                    killed_victims.add(victim_id)
+                    current_frags += 1
+    except Exception:
+        pass
+
+def on_receive_vehicle_death(victim_id, killer_id, reason=0, *args, **kwargs):
+    global current_frags, self_ship_id, self_avatar_id, killed_victims
+    try:
+        is_self = False
+        if self_ship_id is not None and killer_id == self_ship_id:
+            is_self = True
+        else:
+            b = _get_battle()
+            if b and hasattr(b, "getPlayerByVehicleId") and hasattr(b, "getSelfPlayerInfo"):
+                try:
+                    killer = b.getPlayerByVehicleId(killer_id)
+                    me = b.getSelfPlayerInfo()
+                    if killer and me:
+                        if _extract_avatar_id(killer) == _extract_avatar_id(me):
+                            is_self = True
+                        elif _extract_ship_id(killer) == _extract_ship_id(me):
+                            is_self = True
+                except Exception:
+                    pass
+
+        if is_self:
+            if victim_id not in killed_victims:
+                killed_victims.add(victim_id)
                 current_frags += 1
     except Exception:
         pass
 
 def on_battle_start(*args, **kwargs):
-    global current_damage, current_frags
+    global current_damage, current_frags, killed_victims
     log_msg("Battle started, initiating telemetry loop.")
     current_damage = 0
     current_frags = 0
+    killed_victims.clear()
     tick_telemetry()
 
 def on_battle_end(*args, **kwargs):
-    global callback_handle
+    global callback_handle, killed_victims
     log_msg("Battle ended, clearing telemetry loop.")
+    killed_victims.clear()
     c = _get_callbacks()
     if callback_handle is not None and c and hasattr(c, "cancel"):
         try:
@@ -284,12 +420,24 @@ if ev:
     try:
         if hasattr(ev, "onBattleStart"):
             ev.onBattleStart(on_battle_start)
+        if hasattr(ev, "onBattleShown"):
+            ev.onBattleShown(on_battle_start)
         if hasattr(ev, "onBattleEnd"):
             ev.onBattleEnd(on_battle_end)
         if hasattr(ev, "onBattleQuit"):
             ev.onBattleQuit(on_battle_end)
+        if hasattr(ev, "onReceiveDamagesOnShip"):
+            try:
+                ev.onReceiveDamagesOnShip(on_receive_damages_on_ship)
+                has_damages_hook = True
+            except Exception:
+                pass
         if hasattr(ev, "onReceiveShellInfo"):
             ev.onReceiveShellInfo(on_receive_shell_info)
+        if hasattr(ev, "onReceiveVehicleDeath"):
+            ev.onReceiveVehicleDeath(on_receive_vehicle_death)
+        if hasattr(ev, "onVehicleDeath"):
+            ev.onVehicleDeath(on_receive_vehicle_death)
         log_msg("TelemetryExporter loaded and hooked to game events successfully.")
     except Exception as e:
         log_msg("Hook error: " + str(e))

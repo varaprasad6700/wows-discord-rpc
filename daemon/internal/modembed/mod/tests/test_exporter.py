@@ -40,6 +40,103 @@ class TestTelemetryExporter(unittest.TestCase):
 
         self.assertEqual(loaded, data)
 
+    def test_on_receive_damages_on_ship_adds_fire_and_flood_damage(self):
+        import PnFMods.TelemetryExporter.Main as mod
+
+        mod.current_damage = 0
+        mod.self_ship_id = 4181230000
+        mod.self_avatar_id = 100
+
+        class MockPlayer:
+            def __init__(self, avatar_id, ship_id):
+                self.id = avatar_id
+                self.shipId = ship_id
+
+        class MockBattleDamages:
+            def getSelfPlayerInfo(self):
+                return MockPlayer(100, 4181230000)
+            def getSelfPlayerShip(self):
+                class MockShipObj:
+                    id = 10001
+                return MockShipObj()
+            def getPlayerByVehicleId(self, veh_id):
+                if veh_id == 10001:
+                    return MockPlayer(100, 4181230000)
+                elif veh_id == 10002:
+                    return MockPlayer(200, 4281230000)
+                return None
+
+        orig_battle = getattr(mod, "battle", None)
+        try:
+            mod.battle = MockBattleDamages()
+
+            # Fire damage tick from local player (veh_id 10001) onto enemy (veh_id 10002)
+            damages_fire = [{"vehicleID": 10001, "damage": 1250.0}]
+            mod.on_receive_damages_on_ship(10002, damages_fire)
+            self.assertEqual(int(mod.current_damage), 1250)
+
+            # Flooding damage tick from local player onto enemy
+            damages_flood = [{"vehicleID": 10001, "damage": 2300.0}]
+            mod.on_receive_damages_on_ship(10002, damages_flood)
+            self.assertEqual(int(mod.current_damage), 3550)
+
+            # Damage from another player onto enemy - should NOT be added
+            damages_other = [{"vehicleID": 99999, "damage": 5000.0}]
+            mod.on_receive_damages_on_ship(10002, damages_other)
+            self.assertEqual(int(mod.current_damage), 3550)
+
+            # Damage where victim is self ship - should NOT be added
+            damages_self_victim = [{"vehicleID": 10001, "damage": 500.0}]
+            mod.on_receive_damages_on_ship(10001, damages_self_victim)
+            self.assertEqual(int(mod.current_damage), 3550)
+        finally:
+            if orig_battle is not None:
+                mod.battle = orig_battle
+            elif hasattr(mod, "battle"):
+                delattr(mod, "battle")
+
+    def test_on_receive_shell_info_does_not_double_count_when_damages_hooked(self):
+        import PnFMods.TelemetryExporter.Main as mod
+
+        mod.current_damage = 1000
+        mod.current_frags = 0
+        mod.self_ship_id = 4181230000
+        mod.has_damages_hook = True
+        mod.killed_victims.clear()
+
+        # Shell info fired - because has_damages_hook is True, damage is not double-counted
+        mod.on_receive_shell_info(victim_id=2000, shooter_id=4181230000, ammo_id=1, mat_id=1, shoot_id=1, booleans=0, damage=500)
+        self.assertEqual(int(mod.current_damage), 1000)
+
+        # But frag flag (booleans & 8) is still captured
+        mod.on_receive_shell_info(victim_id=2000, shooter_id=4181230000, ammo_id=1, mat_id=1, shoot_id=1, booleans=8, damage=500)
+        self.assertEqual(mod.current_frags, 1)
+        self.assertIn(2000, mod.killed_victims)
+
+        # Same victim again should not increment frags twice
+        mod.on_receive_shell_info(victim_id=2000, shooter_id=4181230000, ammo_id=1, mat_id=1, shoot_id=1, booleans=8, damage=0)
+        self.assertEqual(mod.current_frags, 1)
+
+    def test_on_receive_vehicle_death_tracks_frags_from_fire_and_floods(self):
+        import PnFMods.TelemetryExporter.Main as mod
+
+        mod.current_frags = 0
+        mod.self_ship_id = 4181230000
+        mod.killed_victims.clear()
+
+        # Fire kills victim 3000
+        mod.on_receive_vehicle_death(victim_id=3000, killer_id=4181230000, reason=2)
+        self.assertEqual(mod.current_frags, 1)
+        self.assertIn(3000, mod.killed_victims)
+
+        # Duplicate event for same victim
+        mod.on_receive_vehicle_death(victim_id=3000, killer_id=4181230000, reason=2)
+        self.assertEqual(mod.current_frags, 1)
+
+        # Kill by another player should not increment
+        mod.on_receive_vehicle_death(victim_id=4000, killer_id=999999, reason=1)
+        self.assertEqual(mod.current_frags, 1)
+
     def test_calculate_telemetry_with_mock_battle(self):
         from PnFMods.TelemetryExporter.Main import build_telemetry_payload
 
